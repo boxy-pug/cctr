@@ -55,4 +55,21 @@ func TestTr(t *testing.T) {
 			t.Errorf("got %q want %q", got, want)
 		}
 	})
+	t.Run("Emoji rune test", func(t *testing.T) {
+		input := config{
+			text: strings.NewReader("hey👋"),
+			// cctr ab12 sd56
+			subst: map[string]string{
+				"👋": "👀",
+				"h": "b",
+			},
+		}
+
+		got := Substitute(input)
+		want := "bey👀"
+
+		if got != want {
+			t.Errorf("got %q want %q", got, want)
+		}
+	})
 }
