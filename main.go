@@ -22,9 +22,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	res := processLines(cfg)
+	processLines(cfg)
 
-	fmt.Println(res)
+	// fmt.Println(res)
 }
 
 func loadConfig() (config, error) {
@@ -87,13 +87,19 @@ func processRunes(line string, cfg config) string {
 func loadSubstitution(target, translation string) (map[string]string, error) {
 	res := make(map[string]string)
 
-	if len(target) != len(translation) {
-		return res, fmt.Errorf("unequal length")
+	for i := range len(target) {
+		if i < len(translation) {
+			res[string(target[i])] = string(translation[i])
+		} else {
+			res[string(target[i])] = string(translation[len(translation)-1])
+		}
 	}
-
-	for i := range target {
-		res[string(target[i])] = string(translation[i])
-	}
-
 	return res, nil
+}
+
+func maxLength(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
