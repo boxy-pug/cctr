@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 type config struct {
-	text       io.Reader
+	input      io.Reader
 	subst      map[string]string
 	deleteFlag bool
 }
@@ -21,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	res := Substitute(cfg)
+	res := processLines(cfg)
 
 	fmt.Println(res)
 }
@@ -31,7 +32,7 @@ func loadConfig() (config, error) {
 
 	cfg := config{
 		subst: make(map[string]string),
-		text:  os.Stdin,
+		input: os.Stdin,
 	}
 	flag.BoolVar(&cfg.deleteFlag, "d", false, "delete chosen chars")
 
@@ -50,10 +51,24 @@ func loadConfig() (config, error) {
 	return cfg, nil
 }
 
-func Substitute(cfg config) string {
-	scanner := bufio.NewScanner(cfg.text)
-	scanner.Split(bufio.ScanRunes)
+func processLines(cfg config) string {
+	scanner := bufio.NewScanner(cfg.input)
+	scanner.Split(bufio.ScanLines)
 
+	res := ""
+
+	for scanner.Scan() {
+		processedLine := processRunes(scanner.Text(), cfg)
+		fmt.Println(processedLine)
+		res += processedLine + "\n"
+	}
+
+	return strings.TrimSuffix(res, "\n")
+}
+
+func processRunes(line string, cfg config) string {
+	scanner := bufio.NewScanner(strings.NewReader(line))
+	scanner.Split(bufio.ScanRunes)
 	res := ""
 
 	for scanner.Scan() {

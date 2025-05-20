@@ -8,13 +8,13 @@ import (
 func TestTr(t *testing.T) {
 	t.Run("Sub small and capital c-letters", func(t *testing.T) {
 		input := config{
-			text: strings.NewReader("Coding Challenges"),
+			input: strings.NewReader("Coding Challenges"),
 			subst: map[string]string{
 				"C": "c",
 			},
 		}
 
-		got := Substitute(input)
+		got := processLines(input)
 		want := "coding challenges"
 
 		if got != want {
@@ -23,13 +23,13 @@ func TestTr(t *testing.T) {
 	})
 	t.Run("Sub small and capital letters, variation", func(t *testing.T) {
 		input := config{
-			text: strings.NewReader("Coding Challenges\nHello GOODbye"),
+			input: strings.NewReader("Coding Challenges\nHello GOODbye"),
 			subst: map[string]string{
 				"e": "E",
 			},
 		}
 
-		got := Substitute(input)
+		got := processLines(input)
 		want := "Coding ChallEngEs\nHEllo GOODbyE"
 
 		if got != want {
@@ -38,7 +38,7 @@ func TestTr(t *testing.T) {
 	})
 	t.Run("Multiple subst chars and numbers", func(t *testing.T) {
 		input := config{
-			text: strings.NewReader("Coding Challenges123\nHelLo GOODbye"),
+			input: strings.NewReader("Coding Challenges123\nHelLo GOODbye"),
 			// cctr ab12 sd56
 			subst: map[string]string{
 				"a": "s",
@@ -48,7 +48,7 @@ func TestTr(t *testing.T) {
 			},
 		}
 
-		got := Substitute(input)
+		got := processLines(input)
 		want := "Coding Chsllenges563\nHelLo GOODdye"
 
 		if got != want {
@@ -57,7 +57,7 @@ func TestTr(t *testing.T) {
 	})
 	t.Run("Emoji rune test", func(t *testing.T) {
 		input := config{
-			text: strings.NewReader("hey👋"),
+			input: strings.NewReader("hey👋"),
 			// cctr ab12 sd56
 			subst: map[string]string{
 				"👋": "👀",
@@ -65,7 +65,7 @@ func TestTr(t *testing.T) {
 			},
 		}
 
-		got := Substitute(input)
+		got := processLines(input)
 		want := "bey👀"
 
 		if got != want {
