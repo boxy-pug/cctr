@@ -13,7 +13,7 @@ import (
 
 type config struct {
 	input           io.Reader
-	subst           map[string]string
+	subst           map[rune]rune
 	deleteFlag      bool
 	checkFunc       checkFunc
 	translateFunc   translateFunc
@@ -66,7 +66,7 @@ func main() {
 
 func loadConfig() (config, error) {
 	cfg := config{
-		subst:       make(map[string]string),
+		subst:       make(map[rune]rune),
 		input:       os.Stdin,
 		target:      "",
 		translation: "",
@@ -113,32 +113,36 @@ func (cfg *config) translateCmd() {
 	}
 }
 
-func processRunes(line string, trMap map[string]string) string {
+func processRunes(line string, trMap map[rune]rune) string {
 	scanner := bufio.NewScanner(strings.NewReader(line))
 	scanner.Split(bufio.ScanRunes)
-	res := ""
+
+	var res strings.Builder
 
 	for scanner.Scan() {
-		currentRune := scanner.Text()
+		currentRune := []rune(scanner.Text())[0]
 		val, exists := trMap[currentRune]
 		if exists {
-			res += val
+			res.WriteRune(val)
 			continue
 		}
-		res += currentRune
+		res.WriteRune(currentRune)
 
 	}
-	return res
+	return res.String()
 }
 
-func loadSubstitution(target, translation string) map[string]string {
-	res := make(map[string]string)
+func loadSubstitution(target, translation string) map[rune]rune {
+	res := make(map[rune]rune)
 
-	for i := range len(target) {
-		if i < len(translation) {
-			res[string(target[i])] = string(translation[i])
+	targetRunes := []rune(target)
+	translationRunes := []rune(translation)
+
+	for i, r := range targetRunes {
+		if i < len(translationRunes) {
+			res[r] = translationRunes[i]
 		} else {
-			res[string(target[i])] = string(translation[len(translation)-1])
+			res[r] = translationRunes[len(translationRunes)-1]
 		}
 	}
 	return res
