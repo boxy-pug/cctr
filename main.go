@@ -87,6 +87,16 @@ func processRunes(line string, cfg config) string {
 func loadSubstitution(target, translation string) (map[string]string, error) {
 	res := make(map[string]string)
 
+	targetHyphenIndex := strings.Index(target, "-")
+	if validRangeSubstitution(target, targetHyphenIndex) {
+		target = expandRange(target, targetHyphenIndex)
+	}
+
+	translationHyphenIndex := strings.Index(translation, "-")
+	if validRangeSubstitution(translation, translationHyphenIndex) {
+		translation = expandRange(translation, translationHyphenIndex)
+	}
+
 	for i := range len(target) {
 		if i < len(translation) {
 			res[string(target[i])] = string(translation[i])
@@ -102,4 +112,21 @@ func maxLength(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func expandRange(s string, idx int) string {
+	var res []byte
+	startTarget := s[idx-1]
+	endTarget := s[idx+1]
+	i := startTarget
+
+	for i <= endTarget {
+		res = append(res, byte(i))
+		i++
+	}
+	return string(res)
+}
+
+func validRangeSubstitution(s string, idx int) bool {
+	return idx != -1 && len(s) >= 3 && idx > 0 && idx < len(s)-1
 }
