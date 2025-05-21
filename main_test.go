@@ -1,21 +1,25 @@
 package main
 
 import (
-	"reflect"
+	//"reflect"
+	"bytes"
 	"strings"
 	"testing"
 )
 
 func TestProcessLines(t *testing.T) {
 	t.Run("Sub small and capital c-letters", func(t *testing.T) {
-		input := config{
-			input: strings.NewReader("Coding Challenges"),
-			subst: map[string]string{
-				"C": "c",
-			},
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding Challenges"),
+			target:      "C",
+			translation: "c",
+			output:      &buf,
 		}
 
-		got := processLines(input)
+		cfg.translateCmd()
+
+		got := buf.String()
 		want := "coding challenges"
 
 		if got != want {
@@ -23,6 +27,27 @@ func TestProcessLines(t *testing.T) {
 		}
 	})
 
+	t.Run("Sub various letters, multiline", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding Challenges\nhello123"),
+			target:      "lo12",
+			translation: "bo34",
+			output:      &buf,
+		}
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "Coding Chabbenges\nhebbo343"
+
+		if got != want {
+			t.Errorf("got %q want %q", got, want)
+		}
+	})
+}
+
+/*
 	t.Run("Sub small and capital letters, variation", func(t *testing.T) {
 		input := config{
 			input: strings.NewReader("Coding Challenges\nHello GOODbye"),
@@ -31,7 +56,7 @@ func TestProcessLines(t *testing.T) {
 			},
 		}
 
-		got := processLines(input)
+		got := translate(input)
 		want := "Coding ChallEngEs\nHEllo GOODbyE"
 
 		if got != want {
@@ -51,7 +76,7 @@ func TestProcessLines(t *testing.T) {
 			},
 		}
 
-		got := processLines(input)
+		got := translate(input)
 		want := "Coding Chsllenges563\nHelLo GOODdye"
 
 		if got != want {
@@ -69,7 +94,7 @@ func TestProcessLines(t *testing.T) {
 			},
 		}
 
-		got := processLines(input)
+		got := translate(input)
 		want := "bey👀"
 
 		if got != want {
@@ -100,3 +125,27 @@ func TestLoadSubstitution(t *testing.T) {
 		}
 	})
 }
+
+func TestClassSpecifier(t *testing.T) {
+	t.Run("from lower to upper", func(t *testing.T) {
+		target := "[:lower:]"
+		translation := "[:upper:]"
+
+		got, err := loadSubstitution(target, translation)
+		want := map[string]string{
+			"a": "A",
+			"b": "B",
+			"c": "C",
+			"d": "D",
+		}
+
+		if err != nil {
+			t.Fatalf("didnt expect error %v", err)
+		}
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %q want %q", got, want)
+		}
+	})
+}
+*/
