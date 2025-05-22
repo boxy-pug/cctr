@@ -46,7 +46,7 @@ func TestProcessLines(t *testing.T) {
 		}
 	})
 
-	t.Run("Sub various letters and numbers, multiline", func(t *testing.T) {
+	t.Run("emoji rune subst", func(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("hello😊"),
@@ -84,7 +84,7 @@ func TestProcessLines(t *testing.T) {
 		}
 	})
 
-	t.Run("non standard chars", func(t *testing.T) {
+	t.Run("special chars", func(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding =%098*\nhello123æøå"),

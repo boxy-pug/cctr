@@ -108,12 +108,12 @@ func (cfg *config) translateCmd() {
 		}
 
 		line := scanner.Text()
-		processedLine := processRunes(line, cfg.subst)
+		processedLine := cfg.processRunes(line)
 		fmt.Fprint(cfg.output, processedLine)
 	}
 }
 
-func processRunes(line string, trMap map[rune]rune) string {
+func (cfg *config) processRunes(line string) string {
 	scanner := bufio.NewScanner(strings.NewReader(line))
 	scanner.Split(bufio.ScanRunes)
 
@@ -121,7 +121,9 @@ func processRunes(line string, trMap map[rune]rune) string {
 
 	for scanner.Scan() {
 		currentRune := []rune(scanner.Text())[0]
-		val, exists := trMap[currentRune]
+
+		val, exists := cfg.subst[currentRune]
+
 		if exists {
 			res.WriteRune(val)
 			continue
@@ -180,6 +182,16 @@ func (cfg *config) checkAndLoadExpression() {
 		cfg.translation = expandRange(cfg.translation)
 	}
 
+	if cfg.targetType == Function {
+		funcs, _ := loadSubstFuncs(cfg.target)
+		cfg.checkFunc = funcs.check
+	}
+
+	if cfg.translationType == Function {
+		funcs, _ := loadSubstFuncs(cfg.translation)
+		cfg.translateFunc = funcs.translate
+	}
+
 	cfg.subst = loadSubstitution(cfg.target, cfg.translation)
 }
 
@@ -195,4 +207,21 @@ func checkExpression(s string) expressionType {
 	default:
 		return Regular
 	}
+}
+
+func loadSubstFuncs(s string) (substFuncs, error) {
+	var sf substFuncs
+
+	classPattern := `^\[:([a-z]+)\]$`
+	re := regexp.MustCompile(classPattern)
+	matches := re.FindStringSubmatch(s)
+
+	if len(matches) > 1 {
+		className := matches[1]
+
+		if funcs, exists := specifierFuncMap[className]; exists {
+			return funcs, nil
+		}
+	}
+	return sf, fmt.Errorf("class specifier not found: %q", s)
 }
