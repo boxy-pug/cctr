@@ -43,13 +43,13 @@ type substFuncs struct {
 }
 
 var specifierFuncMap = map[string]substFuncs{
-	"alpha": {unicode.IsLetter, nil},
-	"upper": {unicode.IsUpper, unicode.ToUpper},
-	"lower": {unicode.IsLower, unicode.ToLower},
-	"digit": {unicode.IsDigit, ToDigit},
-	"print": {unicode.IsPrint, nil},
-	"punct": {unicode.IsPunct, nil},
-	"space": {unicode.IsSpace, nil},
+	"alpha": {check: unicode.IsLetter, translate: nil},
+	"upper": {check: unicode.IsUpper, translate: unicode.ToUpper},
+	"lower": {check: unicode.IsLower, translate: unicode.ToLower},
+	"digit": {check: unicode.IsDigit, translate: ToDigit},
+	"print": {check: unicode.IsPrint, translate: nil},
+	"punct": {check: unicode.IsPunct, translate: ToPunct},
+	"space": {check: unicode.IsSpace, translate: ToSpace},
 }
 
 func main() {
@@ -108,7 +108,15 @@ func (cfg *config) translateCmd() {
 		}
 
 		line := scanner.Text()
-		processedLine := cfg.processRunes(line)
+		processedLine := ""
+
+		switch {
+		case cfg.targetType != Function && cfg.translationType != Function:
+			processedLine = cfg.processRunes(line)
+		case cfg.targetType == Function && cfg.translationType == Function:
+			processedLine = cfg.processRunesFunc(line)
+		}
+
 		fmt.Fprint(cfg.output, processedLine)
 	}
 }
@@ -130,6 +138,24 @@ func (cfg *config) processRunes(line string) string {
 		}
 		res.WriteRune(currentRune)
 
+	}
+	return res.String()
+}
+
+func (cfg *config) processRunesFunc(line string) string {
+	scanner := bufio.NewScanner(strings.NewReader(line))
+	scanner.Split(bufio.ScanRunes)
+
+	var res strings.Builder
+
+	for scanner.Scan() {
+		currentRune := []rune(scanner.Text())[0]
+
+		if cfg.checkFunc(currentRune) && cfg.translateFunc != nil {
+			res.WriteRune(cfg.translateFunc(currentRune))
+		} else {
+			res.WriteRune(currentRune)
+		}
 	}
 	return res.String()
 }
@@ -183,12 +209,18 @@ func (cfg *config) checkAndLoadExpression() {
 	}
 
 	if cfg.targetType == Function {
-		funcs, _ := loadSubstFuncs(cfg.target)
+		funcs, err := loadSubstFuncs(cfg.target)
+		if err != nil {
+			fmt.Println(err)
+		}
 		cfg.checkFunc = funcs.check
 	}
 
 	if cfg.translationType == Function {
-		funcs, _ := loadSubstFuncs(cfg.translation)
+		funcs, err := loadSubstFuncs(cfg.translation)
+		if err != nil {
+			fmt.Println(err)
+		}
 		cfg.translateFunc = funcs.translate
 	}
 
@@ -196,7 +228,7 @@ func (cfg *config) checkAndLoadExpression() {
 }
 
 func checkExpression(s string) expressionType {
-	classPattern := `^\[:[a-z]+\:]$`
+	classPattern := `["]?[:]\w+[:]["]?`
 	re := regexp.MustCompile(classPattern)
 
 	switch {
@@ -212,16 +244,18 @@ func checkExpression(s string) expressionType {
 func loadSubstFuncs(s string) (substFuncs, error) {
 	var sf substFuncs
 
-	classPattern := `^\[:([a-z]+)\]$`
+	classPattern := `["]?[:](\w+)[:]["]?`
 	re := regexp.MustCompile(classPattern)
 	matches := re.FindStringSubmatch(s)
 
+	className := ""
+
 	if len(matches) > 1 {
-		className := matches[1]
+		className = matches[1]
 
 		if funcs, exists := specifierFuncMap[className]; exists {
 			return funcs, nil
 		}
 	}
-	return sf, fmt.Errorf("class specifier not found: %q", s)
+	return sf, fmt.Errorf("class specifier not found: %q", className)
 }

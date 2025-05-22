@@ -103,24 +103,44 @@ func TestProcessLines(t *testing.T) {
 		}
 	})
 
-	/*
-		t.Run("class specifier lower to upper", func(t *testing.T) {
-			var buf bytes.Buffer
-			cfg := config{
-				input:       strings.NewReader("Coding Challenge"),
-				target:      "[:lower:]",
-				translation: "[:upper:]",
-				output:      &buf,
-			}
+	t.Run("class specifier lower to upper", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding Challenge"),
+			target:      "[:lower:]",
+			translation: "[:upper:]",
+			output:      &buf,
+		}
 
-			cfg.translateCmd()
+		cfg.translateCmd()
 
-			got := buf.String()
-			want := "CODING CHALLENGE"
+		got := buf.String()
+		want := "CODING CHALLENGE"
 
-			if got != want {
-				t.Errorf("got %q want %q", got, want)
-			}
-		})
-	*/
+		if got != want {
+			t.Errorf("got %q want %q", got, want)
+		}
+	})
+
+	t.Run("class specifier alpha to digit", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding Challenge123%.?"),
+			target:      "[:alpha:]",
+			translation: "[:digit:]",
+			output:      &buf,
+		}
+
+		// tr output: 299999 2999999991239999_9999.99.?
+		// don't understand logic behind that, implemented my own mapping
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "293896 270994964123%.?"
+
+		if got != want {
+			t.Errorf("got '%s' want '%s'", got, want)
+		}
+	})
 }
