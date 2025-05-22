@@ -144,24 +144,55 @@ func TestProcessLines(t *testing.T) {
 		}
 	})
 
+	t.Run("regular target and class specifier translation", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding HELLO Goodbye 123"),
+			target:      "od",
+			translation: "[:upper:]",
+			output:      &buf,
+		}
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "CODing HELLO GOODbye 123"
+		if got != want {
+			t.Errorf("got '%s' want '%s'", got, want)
+		}
+	})
+
 	/*
-		t.Run("class specifier target and regular translation", func(t *testing.T) {
-			var buf bytes.Buffer
-			cfg := config{
-				input:       strings.NewReader("Coding HELLO Goodbye 123"),
-				target:      "[:upper:]",
-				translation: "ab",
-				output:      &buf,
-			}
 
-			cfg.translateCmd()
 
-			got := buf.String()
-			want := "boding bbbbb goodbye 123"
+		CABing HELLO GAABbye 123
 
-			if got != want {
-				t.Errorf("got '%s' want '%s'", got, want)
-			}
-		})
+						t.Run("class specifier target and regular translation", func(t *testing.T) {
+							var buf bytes.Buffer
+							cfg := config{
+								input:       strings.NewReader("Coding HELLO Goodbye 123"),
+								target:      "[:upper:]",
+								translation: "ab",
+								output:      &buf,
+							}
+
+							cfg.translateCmd()
+
+							got := buf.String()
+							want := "boding bbbbb goodbye 123"
+
+							if got != want {
+								t.Errorf("got '%s' want '%s'", got, want)
+							}
+						})
+
+				Cddddd HELLO ddddbdd 123
+				coding ddddd goodbye 123
+
+				abababcdf HELLO fffdbfe 123
+
+				😊💚😊💚😊💚💚💚💚 HELLO 💚💚💚💚💚💚💚 123
+
+				😊💚😊💚😊💚🥰🐹🐹 HELLO 🐹🐹🐹🐹💚🐹🐹 123
 	*/
 }

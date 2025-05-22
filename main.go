@@ -115,6 +115,8 @@ func (cfg *config) translateCmd() {
 			processedLine = cfg.processRunes(line)
 		case cfg.targetType == Function && cfg.translationType == Function:
 			processedLine = cfg.processRunesFunc(line)
+		case cfg.targetType != Function && cfg.translationType == Function:
+			processedLine = cfg.processRunesFunc(line)
 		}
 
 		fmt.Fprint(cfg.output, processedLine)
@@ -151,12 +153,25 @@ func (cfg *config) processRunesFunc(line string) string {
 	for scanner.Scan() {
 		currentRune := []rune(scanner.Text())[0]
 
-		if cfg.checkFunc(currentRune) && cfg.translateFunc != nil {
-			res.WriteRune(cfg.translateFunc(currentRune))
-		} else {
-			res.WriteRune(currentRune)
+		if cfg.targetType != Function && cfg.translationType == Function {
+			_, exists := cfg.subst[currentRune]
+			if exists {
+				processedRune := cfg.translateFunc(currentRune)
+				res.WriteRune(processedRune)
+			} else {
+				res.WriteRune(currentRune)
+			}
+		}
+
+		if cfg.targetType == Function && cfg.translationType == Function {
+			if cfg.checkFunc(currentRune) {
+				res.WriteRune(cfg.translateFunc(currentRune))
+			} else {
+				res.WriteRune(currentRune)
+			}
 		}
 	}
+
 	return res.String()
 }
 
@@ -165,6 +180,13 @@ func loadSubstitution(target, translation string) map[rune]rune {
 
 	targetRunes := []rune(target)
 	translationRunes := []rune(translation)
+
+	if len(translationRunes) == 0 {
+		for _, r := range targetRunes {
+			res[r] = 0
+		}
+		return res
+	}
 
 	for i, r := range targetRunes {
 		if i < len(translationRunes) {
@@ -214,6 +236,7 @@ func (cfg *config) checkAndLoadExpression() {
 			fmt.Println(err)
 		}
 		cfg.checkFunc = funcs.check
+		cfg.target = ""
 	}
 
 	if cfg.translationType == Function {
@@ -222,6 +245,7 @@ func (cfg *config) checkAndLoadExpression() {
 			fmt.Println(err)
 		}
 		cfg.translateFunc = funcs.translate
+		cfg.translation = ""
 	}
 
 	cfg.subst = loadSubstitution(cfg.target, cfg.translation)
