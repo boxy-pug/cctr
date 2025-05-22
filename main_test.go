@@ -143,4 +143,25 @@ func TestProcessLines(t *testing.T) {
 			t.Errorf("got '%s' want '%s'", got, want)
 		}
 	})
+
+	/*
+		t.Run("class specifier target and regular translation", func(t *testing.T) {
+			var buf bytes.Buffer
+			cfg := config{
+				input:       strings.NewReader("Coding HELLO Goodbye 123"),
+				target:      "[:upper:]",
+				translation: "ab",
+				output:      &buf,
+			}
+
+			cfg.translateCmd()
+
+			got := buf.String()
+			want := "boding bbbbb goodbye 123"
+
+			if got != want {
+				t.Errorf("got '%s' want '%s'", got, want)
+			}
+		})
+	*/
 }
