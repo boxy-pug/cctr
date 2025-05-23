@@ -16,8 +16,6 @@ type config struct {
 	input            io.Reader
 	subst            map[rune]rune
 	deleteFlag       bool
-	checkFunc        checkFunc
-	translateFunc    translateFunc
 	target           []rune
 	translation      []rune
 	targetType       expressionType
@@ -25,6 +23,7 @@ type config struct {
 	output           io.Writer
 	translationSlice []rune
 	inputType        inputType
+	substFuncs
 }
 
 type expressionType string
@@ -36,13 +35,15 @@ const (
 )
 
 type (
-	checkFunc     func(rune) bool
-	translateFunc func(rune) rune
+	checkFunc        func(rune) bool
+	translateFunc    func(rune) rune
+	substitutionFunc func(rune) rune
 )
 
 type substFuncs struct {
-	check     checkFunc
-	translate translateFunc
+	check      checkFunc
+	translate  translateFunc
+	substitute substitutionFunc
 }
 
 type inputType int
@@ -143,50 +144,14 @@ func (cfg *config) processRunes(line string) string {
 	for scanner.Scan() {
 		currentRune := []rune(scanner.Text())[0]
 
-		switch cfg.inputType {
-		// regular target and translation
-		case regularToRegular:
-			val, exists := cfg.subst[currentRune]
-			if exists {
-				res.WriteRune(val)
-				continue
-			}
-			// function target and function translation
-		case functionToFunction:
-			if cfg.checkFunc(currentRune) {
-				res.WriteRune(cfg.translateFunc(currentRune))
-				continue
-			}
-			// regular target and function translation
-		case regularToFunction:
-			_, exists := cfg.subst[currentRune]
-			if exists {
-				processedRune := cfg.translateFunc(currentRune)
-				res.WriteRune(processedRune)
-				continue
-			}
-
-			// function target and regular translation
-			// maps each rune to the first encountered match in input, not teh ideal solution
-			// wonky with emojis
-		case functionToRegular:
-			if cfg.checkFunc(currentRune) {
-				val, exists := cfg.subst[currentRune]
-				if exists {
-					res.WriteRune(val)
-					continue
-				} else {
-					currentReplacementRune := cfg.translationSlice[0]
-					cfg.subst[currentRune] = currentReplacementRune
-					res.WriteRune(currentReplacementRune)
-					if len(cfg.translationSlice) > 1 {
-						cfg.translationSlice = cfg.translationSlice[1:]
-					}
-					continue
-				}
-			}
+		// check cache first
+		cachedRune, exists := cfg.subst[currentRune]
+		if exists && cachedRune != 0 {
+			res.WriteRune(cachedRune)
+		} else {
+			res.WriteRune(cfg.substitute(currentRune))
 		}
-		res.WriteRune(currentRune)
+
 	}
 	return res.String()
 }
@@ -199,6 +164,7 @@ func (cfg *config) checkAndLoadExpression() {
 	switch cfg.inputType {
 	case regularToRegular:
 		cfg.subst = loadSubstitutionMap(cfg.target, cfg.translation)
+		cfg.substitute = cfg.regToReg
 	case regularToFunction:
 		cfg.subst = loadSubstitutionMap(cfg.target, nil)
 
@@ -206,30 +172,33 @@ func (cfg *config) checkAndLoadExpression() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		cfg.translateFunc = funcs.translate
+		cfg.translate = funcs.translate
 		cfg.translation = nil
+		cfg.substitute = cfg.regToFunc
 	case functionToRegular:
 		funcs, err := loadSubstFuncs(cfg.target)
 		if err != nil {
 			fmt.Println(err)
 		}
-		cfg.checkFunc = funcs.check
+		cfg.check = funcs.check
 
 		cfg.translationSlice = []rune(cfg.translation)
 		cfg.target = nil
+		cfg.substitute = cfg.funcToReg
 	case functionToFunction:
 		funcs, err := loadSubstFuncs(cfg.target)
 		if err != nil {
 			fmt.Println(err)
 		}
-		cfg.checkFunc = funcs.check
+		cfg.check = funcs.check
 		cfg.target = nil
 
 		funcs, err = loadSubstFuncs(cfg.translation)
 		if err != nil {
 			fmt.Println(err)
 		}
-		cfg.translateFunc = funcs.translate
+		cfg.translate = funcs.translate
 		cfg.translation = nil
+		cfg.substitute = cfg.funcToFunc
 	}
 }

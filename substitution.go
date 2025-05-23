@@ -27,9 +27,7 @@ func loadSubstitutionMap(target, translation []rune) map[rune]rune {
 }
 
 func checkExpressionAndExpandRange(ru []rune) (expressionType, []rune) {
-	var et expressionType
-
-	et = checkExpression(ru)
+	et := checkExpression(ru)
 
 	if et != Range {
 		return et, ru
@@ -39,13 +37,13 @@ func checkExpressionAndExpandRange(ru []rune) (expressionType, []rune) {
 	var res []rune
 	idx := strings.Index(s, "-")
 
-	if idx == -1 || idx == 0 || idx == len(s)-1 {
-		// Return the original string if no valid range is found
-		return et, ru
-	}
-
 	startTarget := ru[idx-1]
 	endTarget := ru[idx+1]
+
+	// if startTarget is bigger than endTarget treat as normal subst
+	if startTarget > endTarget {
+		return et, ru
+	}
 
 	var startRest []rune
 	var endRest []rune
@@ -56,11 +54,6 @@ func checkExpressionAndExpandRange(ru []rune) (expressionType, []rune) {
 	}
 	if idx < len(s)-2 {
 		endRest = ru[idx+2:]
-	}
-
-	// if startTarget is bigger than endTarget treat as normal subst
-	if startTarget > endTarget {
-		return et, ru
 	}
 
 	r := startTarget
@@ -118,8 +111,6 @@ func loadSubstFuncs(ru []rune) (substFuncs, error) {
 
 func determineInputType(targT, transT expressionType) inputType {
 	switch {
-	case targT != Function && transT != Function:
-		return regularToRegular
 	case targT == Function && transT != Function:
 		return functionToRegular
 	case targT != Function && transT == Function:
@@ -129,4 +120,46 @@ func determineInputType(targT, transT expressionType) inputType {
 	default:
 		return regularToRegular
 	}
+}
+
+func (cfg *config) regToReg(r rune) rune {
+	val, exists := cfg.subst[r]
+	if exists {
+		return val
+	}
+	return r
+}
+
+func (cfg *config) regToFunc(r rune) rune {
+	_, exists := cfg.subst[r]
+	if exists {
+		processedRune := cfg.translate(r)
+		cfg.subst[r] = processedRune
+		return processedRune
+	}
+	return r
+}
+
+func (cfg *config) funcToReg(r rune) rune {
+	if cfg.check(r) {
+		val, exists := cfg.subst[r]
+		if exists {
+			return val
+		} else {
+			currentReplacementRune := cfg.translationSlice[0]
+			cfg.subst[r] = currentReplacementRune
+			if len(cfg.translationSlice) > 1 {
+				cfg.translationSlice = cfg.translationSlice[1:]
+			}
+			return currentReplacementRune
+		}
+	}
+	return r
+}
+
+func (cfg *config) funcToFunc(r rune) rune {
+	if cfg.check(r) {
+		return cfg.translate(r)
+	}
+	return r
 }
