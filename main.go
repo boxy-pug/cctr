@@ -17,8 +17,8 @@ type config struct {
 	deleteFlag       bool
 	checkFunc        checkFunc
 	translateFunc    translateFunc
-	target           string
-	translation      string
+	target           []rune
+	translation      []rune
 	targetType       expressionType
 	translationType  expressionType
 	output           io.Writer
@@ -69,8 +69,8 @@ func loadConfig() (config, error) {
 	cfg := config{
 		subst:       make(map[rune]rune),
 		input:       os.Stdin,
-		target:      "",
-		translation: "",
+		target:      nil,
+		translation: nil,
 		output:      os.Stdout,
 	}
 
@@ -81,12 +81,12 @@ func loadConfig() (config, error) {
 
 	switch {
 	case len(args) == 1 && cfg.deleteFlag:
-		cfg.target = args[0]
+		cfg.target = []rune(args[0])
 	case len(args) < 2:
 		return cfg, fmt.Errorf("please provide chars to translate and chars to translate into: %v", args)
 	case len(args) == 2:
-		cfg.target = args[0]
-		cfg.translation = args[1]
+		cfg.target = []rune(args[0])
+		cfg.translation = []rune(args[1])
 	default:
 		return cfg, fmt.Errorf("please provide cmd <target> <translation>: %v", args)
 	}
@@ -175,79 +175,71 @@ func (cfg *config) processRunes(line string) string {
 	return res.String()
 }
 
-func loadSubstitution(target, translation string) map[rune]rune {
+func loadSubstitution(target, translation []rune) map[rune]rune {
 	res := make(map[rune]rune)
 
-	targetRunes := []rune(target)
-	translationRunes := []rune(translation)
-
-	if len(translationRunes) == 0 {
-		for _, r := range targetRunes {
+	if len(translation) == 0 {
+		for _, r := range target {
 			res[r] = 0
 		}
 		return res
 	}
 
-	// if len(targetRunes) == 0 {
-	// 	for _, r := range translationRunes {
-	// 		res[r] = 0
-	// 	}
-	// 	return res
-	// }
-
-	for i, r := range targetRunes {
-		if i < len(translationRunes) {
-			res[r] = translationRunes[i]
+	for i, r := range target {
+		if i < len(translation) {
+			res[r] = translation[i]
 		} else {
-			res[r] = translationRunes[len(translationRunes)-1]
+			res[r] = translation[len(translation)-1]
 		}
 	}
 	return res
 }
 
-func expandRange(s string) string {
-	var res []byte
+func expandRange(ru []rune) []rune {
+	s := string(ru)
+	var res []rune
 	idx := strings.Index(s, "-")
 
 	if idx == -1 || idx == 0 || idx == len(s)-1 {
 		// Return the original string if no valid range is found
-		return s
+		return ru
 	}
 
-	startTarget := s[idx-1]
-	endTarget := s[idx+1]
+	startTarget := ru[idx-1]
+	endTarget := ru[idx+1]
 
-	startRest := ""
-	endRest := ""
+	var startRest []rune
+	var endRest []rune
 
 	// Extract the parts before and after the range
 	if idx > 1 {
-		startRest = s[:idx-1]
+		startRest = ru[:idx-1]
 	}
 	if idx < len(s)-2 {
-		endRest = s[idx+2:]
+		endRest = ru[idx+2:]
 	}
 
 	// if startTarget is bigger than endTarget treat as normal subst
 	if startTarget > endTarget {
-		return s
+		return ru
 	}
 
-	i := startTarget
+	r := startTarget
 
-	res = append(res, []byte(startRest)...)
+	res = append(res, startRest...)
 
-	for i <= endTarget {
-		res = append(res, byte(i))
-		i++
+	for r <= endTarget {
+		res = append(res, r)
+		r++
 	}
 
-	res = append(res, []byte(endRest)...)
+	res = append(res, endRest...)
 
-	return string(res)
+	return res
 }
 
-func validRangeSubstitution(s string) bool {
+func validRangeSubstitution(ru []rune) bool {
+	s := string(ru)
 	idx := strings.Index(s, "-")
 	return idx != -1 && len(s) >= 3 && idx > 0 && idx < len(s)-1
 }
@@ -274,7 +266,7 @@ func (cfg *config) checkAndLoadExpression() {
 		if cfg.translationType != Function {
 			cfg.translationSlice = []rune(cfg.translation)
 		}
-		cfg.target = ""
+		cfg.target = nil
 	}
 
 	if cfg.translationType == Function {
@@ -283,28 +275,30 @@ func (cfg *config) checkAndLoadExpression() {
 			fmt.Println(err)
 		}
 		cfg.translateFunc = funcs.translate
-		cfg.translation = ""
+		cfg.translation = nil
 	}
 
 	cfg.subst = loadSubstitution(cfg.target, cfg.translation)
 }
 
-func checkExpression(s string) expressionType {
+func checkExpression(ru []rune) expressionType {
+	s := string(ru)
 	classPattern := `["]?[:]\w+[:]["]?`
 	re := regexp.MustCompile(classPattern)
 
 	switch {
 	case re.MatchString(s):
 		return Function
-	case validRangeSubstitution(s):
+	case validRangeSubstitution(ru):
 		return Range
 	default:
 		return Regular
 	}
 }
 
-func loadSubstFuncs(s string) (substFuncs, error) {
+func loadSubstFuncs(ru []rune) (substFuncs, error) {
 	var sf substFuncs
+	s := string(ru)
 
 	classPattern := `["]?[:](\w+)[:]["]?`
 	re := regexp.MustCompile(classPattern)

@@ -12,8 +12,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenges"),
-			target:      "C",
-			translation: "c",
+			target:      []rune("C"),
+			translation: []rune("c"),
 			output:      &buf,
 		}
 
@@ -29,8 +29,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenges\nhello123"),
-			target:      "lo12",
-			translation: "bo34",
+			target:      []rune("lo12"),
+			translation: []rune("bo34"),
 			output:      &buf,
 		}
 
@@ -46,8 +46,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("hello😊"),
-			target:      "😊",
-			translation: "👀",
+			target:      []rune("😊"),
+			translation: []rune("👀"),
 			output:      &buf,
 		}
 
@@ -63,8 +63,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenges\nhello123æøå"),
-			target:      "a-d",
-			translation: "e-h",
+			target:      []rune("a-d"),
+			translation: []rune("e-h"),
 			output:      &buf,
 		}
 
@@ -80,8 +80,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("abcdefghijklmnop"),
-			target:      "abc-f",
-			translation: "ghi-l",
+			target:      []rune("abc-f"),
+			translation: []rune("ghi-l"),
 			output:      &buf,
 		}
 
@@ -97,8 +97,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenges\nhello123æøå"),
-			target:      "d-a",
-			translation: "h-e",
+			target:      []rune("d-a"),
+			translation: []rune("h-e"),
 			output:      &buf,
 		}
 
@@ -114,8 +114,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding =%098*\nhello123æøå"),
-			target:      "æ%",
-			translation: "å=.",
+			target:      []rune("æ%"),
+			translation: []rune("å=."),
 			output:      &buf,
 		}
 
@@ -131,8 +131,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenge"),
-			target:      "[:lower:]",
-			translation: "[:upper:]",
+			target:      []rune("[:lower:]"),
+			translation: []rune("[:upper:]"),
 			output:      &buf,
 		}
 
@@ -148,8 +148,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding Challenge123%.?"),
-			target:      "[:alpha:]",
-			translation: "[:digit:]",
+			target:      []rune("[:alpha:]"),
+			translation: []rune("[:digit:]"),
 			output:      &buf,
 		}
 
@@ -168,8 +168,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("Coding HELLO Goodbye 123"),
-			target:      "od",
-			translation: "[:upper:]",
+			target:      []rune("od"),
+			translation: []rune("[:upper:]"),
 			output:      &buf,
 		}
 
@@ -184,8 +184,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("abcd abc\ndef def\nabc abc\ndef"),
-			target:      "[:lower:]",
-			translation: "xyz",
+			target:      []rune("[:lower:]"),
+			translation: []rune("xyz"),
 			output:      &buf,
 		}
 
@@ -201,8 +201,8 @@ func TestProcessLines(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
 			input:       strings.NewReader("coding HELLO abc Good 123"),
-			target:      "[:lower:]",
-			translation: "xyz",
+			target:      []rune("[:lower:]"),
+			translation: []rune("xyz"),
 			output:      &buf,
 		}
 
