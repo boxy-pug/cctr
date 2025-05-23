@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 	"unicode"
 )
+
+const classPattern = `["]?[:](\w+)[:]["]?`
 
 type config struct {
 	input            io.Reader
@@ -23,6 +24,7 @@ type config struct {
 	translationType  expressionType
 	output           io.Writer
 	translationSlice []rune
+	inputType        inputType
 }
 
 type expressionType string
@@ -43,12 +45,21 @@ type substFuncs struct {
 	translate translateFunc
 }
 
+type inputType int
+
+const (
+	regularToRegular inputType = iota
+	regularToFunction
+	functionToRegular
+	functionToFunction
+)
+
 var specifierFuncMap = map[string]substFuncs{
-	"alpha": {check: unicode.IsLetter, translate: nil},
+	"alpha": {check: unicode.IsLetter, translate: ToLetter},
 	"upper": {check: unicode.IsUpper, translate: unicode.ToUpper},
 	"lower": {check: unicode.IsLower, translate: unicode.ToLower},
 	"digit": {check: unicode.IsDigit, translate: ToDigit},
-	"print": {check: unicode.IsPrint, translate: nil},
+	"print": {check: unicode.IsPrint, translate: ToPrint},
 	"punct": {check: unicode.IsPunct, translate: ToPunct},
 	"space": {check: unicode.IsSpace, translate: ToSpace},
 }
@@ -67,11 +78,9 @@ func main() {
 
 func loadConfig() (config, error) {
 	cfg := config{
-		subst:       make(map[rune]rune),
-		input:       os.Stdin,
-		target:      nil,
-		translation: nil,
-		output:      os.Stdout,
+		subst:  make(map[rune]rune),
+		input:  os.Stdin,
+		output: os.Stdout,
 	}
 
 	flag.BoolVar(&cfg.deleteFlag, "d", false, "delete chosen chars")
@@ -95,6 +104,13 @@ func loadConfig() (config, error) {
 }
 
 func (cfg *config) translateCmd() {
+	// check if target and translation is regular, range or function
+	// and expand range
+	cfg.targetType, cfg.target = checkExpressionAndExpandRange(cfg.target)
+	cfg.translationType, cfg.translation = checkExpressionAndExpandRange(cfg.translation)
+
+	cfg.inputType = determineInputType(cfg.targetType, cfg.translationType)
+
 	cfg.checkAndLoadExpression()
 
 	scanner := bufio.NewScanner(cfg.input)
@@ -127,22 +143,22 @@ func (cfg *config) processRunes(line string) string {
 	for scanner.Scan() {
 		currentRune := []rune(scanner.Text())[0]
 
-		switch {
+		switch cfg.inputType {
 		// regular target and translation
-		case cfg.targetType != Function && cfg.translationType != Function:
+		case regularToRegular:
 			val, exists := cfg.subst[currentRune]
 			if exists {
 				res.WriteRune(val)
 				continue
 			}
 			// function target and function translation
-		case cfg.targetType == Function && cfg.translationType == Function:
+		case functionToFunction:
 			if cfg.checkFunc(currentRune) {
 				res.WriteRune(cfg.translateFunc(currentRune))
 				continue
 			}
-			// function target and regular translation
-		case cfg.targetType != Function && cfg.translationType == Function:
+			// regular target and function translation
+		case regularToFunction:
 			_, exists := cfg.subst[currentRune]
 			if exists {
 				processedRune := cfg.translateFunc(currentRune)
@@ -153,7 +169,7 @@ func (cfg *config) processRunes(line string) string {
 			// function target and regular translation
 			// maps each rune to the first encountered match in input, not teh ideal solution
 			// wonky with emojis
-		case cfg.targetType == Function && cfg.translationType != Function:
+		case functionToRegular:
 			if cfg.checkFunc(currentRune) {
 				val, exists := cfg.subst[currentRune]
 				if exists {
@@ -175,143 +191,45 @@ func (cfg *config) processRunes(line string) string {
 	return res.String()
 }
 
-func loadSubstitution(target, translation []rune) map[rune]rune {
-	res := make(map[rune]rune)
-
-	if len(translation) == 0 {
-		for _, r := range target {
-			res[r] = 0
-		}
-		return res
-	}
-
-	for i, r := range target {
-		if i < len(translation) {
-			res[r] = translation[i]
-		} else {
-			res[r] = translation[len(translation)-1]
-		}
-	}
-	return res
-}
-
-func expandRange(ru []rune) []rune {
-	s := string(ru)
-	var res []rune
-	idx := strings.Index(s, "-")
-
-	if idx == -1 || idx == 0 || idx == len(s)-1 {
-		// Return the original string if no valid range is found
-		return ru
-	}
-
-	startTarget := ru[idx-1]
-	endTarget := ru[idx+1]
-
-	var startRest []rune
-	var endRest []rune
-
-	// Extract the parts before and after the range
-	if idx > 1 {
-		startRest = ru[:idx-1]
-	}
-	if idx < len(s)-2 {
-		endRest = ru[idx+2:]
-	}
-
-	// if startTarget is bigger than endTarget treat as normal subst
-	if startTarget > endTarget {
-		return ru
-	}
-
-	r := startTarget
-
-	res = append(res, startRest...)
-
-	for r <= endTarget {
-		res = append(res, r)
-		r++
-	}
-
-	res = append(res, endRest...)
-
-	return res
-}
-
-func validRangeSubstitution(ru []rune) bool {
-	s := string(ru)
-	idx := strings.Index(s, "-")
-	return idx != -1 && len(s) >= 3 && idx > 0 && idx < len(s)-1
-}
-
 func (cfg *config) checkAndLoadExpression() {
-	cfg.targetType = checkExpression(cfg.target)
-	cfg.translationType = checkExpression(cfg.translation)
-
-	if cfg.targetType == Range {
-		cfg.target = expandRange(cfg.target)
+	if cfg.subst == nil {
+		cfg.subst = make(map[rune]rune)
 	}
 
-	if cfg.translationType == Range {
-		cfg.translation = expandRange(cfg.translation)
-	}
+	switch cfg.inputType {
+	case regularToRegular:
+		cfg.subst = loadSubstitutionMap(cfg.target, cfg.translation)
+	case regularToFunction:
+		cfg.subst = loadSubstitutionMap(cfg.target, nil)
 
-	if cfg.targetType == Function {
-		funcs, err := loadSubstFuncs(cfg.target)
-		if err != nil {
-			fmt.Println(err)
-		}
-		cfg.checkFunc = funcs.check
-
-		if cfg.translationType != Function {
-			cfg.translationSlice = []rune(cfg.translation)
-		}
-		cfg.target = nil
-	}
-
-	if cfg.translationType == Function {
 		funcs, err := loadSubstFuncs(cfg.translation)
 		if err != nil {
 			fmt.Println(err)
 		}
 		cfg.translateFunc = funcs.translate
 		cfg.translation = nil
-	}
-
-	cfg.subst = loadSubstitution(cfg.target, cfg.translation)
-}
-
-func checkExpression(ru []rune) expressionType {
-	s := string(ru)
-	classPattern := `["]?[:]\w+[:]["]?`
-	re := regexp.MustCompile(classPattern)
-
-	switch {
-	case re.MatchString(s):
-		return Function
-	case validRangeSubstitution(ru):
-		return Range
-	default:
-		return Regular
-	}
-}
-
-func loadSubstFuncs(ru []rune) (substFuncs, error) {
-	var sf substFuncs
-	s := string(ru)
-
-	classPattern := `["]?[:](\w+)[:]["]?`
-	re := regexp.MustCompile(classPattern)
-	matches := re.FindStringSubmatch(s)
-
-	className := ""
-
-	if len(matches) > 1 {
-		className = matches[1]
-
-		if funcs, exists := specifierFuncMap[className]; exists {
-			return funcs, nil
+	case functionToRegular:
+		funcs, err := loadSubstFuncs(cfg.target)
+		if err != nil {
+			fmt.Println(err)
 		}
+		cfg.checkFunc = funcs.check
+
+		cfg.translationSlice = []rune(cfg.translation)
+		cfg.target = nil
+	case functionToFunction:
+		funcs, err := loadSubstFuncs(cfg.target)
+		if err != nil {
+			fmt.Println(err)
+		}
+		cfg.checkFunc = funcs.check
+		cfg.target = nil
+
+		funcs, err = loadSubstFuncs(cfg.translation)
+		if err != nil {
+			fmt.Println(err)
+		}
+		cfg.translateFunc = funcs.translate
+		cfg.translation = nil
 	}
-	return sf, fmt.Errorf("class specifier not found: %q", className)
 }
