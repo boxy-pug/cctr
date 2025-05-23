@@ -30,3 +30,18 @@ func ToSpace(r rune) rune {
 	}
 	return ' '
 }
+
+// TODO: how to convert to print?
+func ToPrint(r rune) rune {
+	if unicode.IsPrint(r) {
+		return r
+	}
+	return 'x'
+}
+
+func ToLetter(r rune) rune {
+	if unicode.IsLetter(r) {
+		return r
+	}
+	return rune('a' + (r % 26))
+}
