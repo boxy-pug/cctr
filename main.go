@@ -12,16 +12,17 @@ import (
 )
 
 type config struct {
-	input           io.Reader
-	subst           map[rune]rune
-	deleteFlag      bool
-	checkFunc       checkFunc
-	translateFunc   translateFunc
-	target          string
-	translation     string
-	targetType      expressionType
-	translationType expressionType
-	output          io.Writer
+	input            io.Reader
+	subst            map[rune]rune
+	deleteFlag       bool
+	checkFunc        checkFunc
+	translateFunc    translateFunc
+	target           string
+	translation      string
+	targetType       expressionType
+	translationType  expressionType
+	output           io.Writer
+	translationSlice []rune
 }
 
 type expressionType string
@@ -72,6 +73,7 @@ func loadConfig() (config, error) {
 		translation: "",
 		output:      os.Stdout,
 	}
+
 	flag.BoolVar(&cfg.deleteFlag, "d", false, "delete chosen chars")
 
 	flag.Parse()
@@ -110,14 +112,7 @@ func (cfg *config) translateCmd() {
 		line := scanner.Text()
 		processedLine := ""
 
-		switch {
-		case cfg.targetType != Function && cfg.translationType != Function:
-			processedLine = cfg.processRunes(line)
-		case cfg.targetType == Function && cfg.translationType == Function:
-			processedLine = cfg.processRunesFunc(line)
-		case cfg.targetType != Function && cfg.translationType == Function:
-			processedLine = cfg.processRunesFunc(line)
-		}
+		processedLine = cfg.processRunes(line)
 
 		fmt.Fprint(cfg.output, processedLine)
 	}
@@ -132,46 +127,51 @@ func (cfg *config) processRunes(line string) string {
 	for scanner.Scan() {
 		currentRune := []rune(scanner.Text())[0]
 
-		val, exists := cfg.subst[currentRune]
-
-		if exists {
-			res.WriteRune(val)
-			continue
-		}
-		res.WriteRune(currentRune)
-
-	}
-	return res.String()
-}
-
-func (cfg *config) processRunesFunc(line string) string {
-	scanner := bufio.NewScanner(strings.NewReader(line))
-	scanner.Split(bufio.ScanRunes)
-
-	var res strings.Builder
-
-	for scanner.Scan() {
-		currentRune := []rune(scanner.Text())[0]
-
-		if cfg.targetType != Function && cfg.translationType == Function {
+		switch {
+		// regular target and translation
+		case cfg.targetType != Function && cfg.translationType != Function:
+			val, exists := cfg.subst[currentRune]
+			if exists {
+				res.WriteRune(val)
+				continue
+			}
+			// function target and function translation
+		case cfg.targetType == Function && cfg.translationType == Function:
+			if cfg.checkFunc(currentRune) {
+				res.WriteRune(cfg.translateFunc(currentRune))
+				continue
+			}
+			// function target and regular translation
+		case cfg.targetType != Function && cfg.translationType == Function:
 			_, exists := cfg.subst[currentRune]
 			if exists {
 				processedRune := cfg.translateFunc(currentRune)
 				res.WriteRune(processedRune)
-			} else {
-				res.WriteRune(currentRune)
+				continue
 			}
-		}
 
-		if cfg.targetType == Function && cfg.translationType == Function {
+			// function target and regular translation
+			// maps each rune to the first encountered match in input, not teh ideal solution
+			// wonky with emojis
+		case cfg.targetType == Function && cfg.translationType != Function:
 			if cfg.checkFunc(currentRune) {
-				res.WriteRune(cfg.translateFunc(currentRune))
-			} else {
-				res.WriteRune(currentRune)
+				val, exists := cfg.subst[currentRune]
+				if exists {
+					res.WriteRune(val)
+					continue
+				} else {
+					currentReplacementRune := cfg.translationSlice[0]
+					cfg.subst[currentRune] = currentReplacementRune
+					res.WriteRune(currentReplacementRune)
+					if len(cfg.translationSlice) > 1 {
+						cfg.translationSlice = cfg.translationSlice[1:]
+					}
+					continue
+				}
 			}
 		}
+		res.WriteRune(currentRune)
 	}
-
 	return res.String()
 }
 
@@ -187,6 +187,13 @@ func loadSubstitution(target, translation string) map[rune]rune {
 		}
 		return res
 	}
+
+	// if len(targetRunes) == 0 {
+	// 	for _, r := range translationRunes {
+	// 		res[r] = 0
+	// 	}
+	// 	return res
+	// }
 
 	for i, r := range targetRunes {
 		if i < len(translationRunes) {
@@ -204,6 +211,15 @@ func expandRange(s string) string {
 
 	startTarget := s[idx-1]
 	endTarget := s[idx+1]
+
+	// startRest := s[:startTarget]
+	// endRest := s[endTarget:]
+
+	// if startTarget is bigger than endTarget treat as normal subst
+	if startTarget > endTarget {
+		return s
+	}
+
 	i := startTarget
 
 	for i <= endTarget {
@@ -236,6 +252,10 @@ func (cfg *config) checkAndLoadExpression() {
 			fmt.Println(err)
 		}
 		cfg.checkFunc = funcs.check
+
+		if cfg.translationType != Function {
+			cfg.translationSlice = []rune(cfg.translation)
+		}
 		cfg.target = ""
 	}
 

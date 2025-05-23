@@ -22,9 +22,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "coding challenges"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("Sub various letters and numbers, multiline", func(t *testing.T) {
@@ -41,9 +39,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "Coding Chabbenges\nhebbo343"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("emoji rune subst", func(t *testing.T) {
@@ -60,9 +56,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "hello👀"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("range expression", func(t *testing.T) {
@@ -79,9 +73,41 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "Cohing Chellenges\nhello123æøå"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
+		assertEqual(t, got, want)
+	})
+	/*
+		t.Run("range expression, mixed", func(t *testing.T) {
+			var buf bytes.Buffer
+			cfg := config{
+				input:       strings.NewReader("abcdefghijklmnop"),
+				target:      "abc-f",
+				translation: "ghi-l",
+				output:      &buf,
+			}
+
+			cfg.translateCmd()
+
+			got := buf.String()
+			want := "Cojing Chgllkngks\nhkllolgmily"
+
+			assertEqual(t, got, want)
+		})
+	*/
+	t.Run("range expression ignored", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("Coding Challenges\nhello123æøå"),
+			target:      "d-a",
+			translation: "h-e",
+			output:      &buf,
 		}
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "Cohing Chellenges\nhello123æøå"
+
+		assertEqual(t, got, want)
 	})
 
 	t.Run("special chars", func(t *testing.T) {
@@ -98,9 +124,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "Coding ==098*\nhello123åøå"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("class specifier lower to upper", func(t *testing.T) {
@@ -117,9 +141,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "CODING CHALLENGE"
 
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("class specifier alpha to digit", func(t *testing.T) {
@@ -139,9 +161,7 @@ func TestProcessLines(t *testing.T) {
 		got := buf.String()
 		want := "293896 270994964123%.?"
 
-		if got != want {
-			t.Errorf("got '%s' want '%s'", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
 	t.Run("regular target and class specifier translation", func(t *testing.T) {
@@ -157,42 +177,70 @@ func TestProcessLines(t *testing.T) {
 
 		got := buf.String()
 		want := "CODing HELLO GOODbye 123"
-		if got != want {
-			t.Errorf("got '%s' want '%s'", got, want)
-		}
+		assertEqual(t, got, want)
 	})
 
+	t.Run("class specifier target and regular translation, multiline", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("abcd abc\ndef def\nabc abc\ndef"),
+			target:      "[:lower:]",
+			translation: "xyz",
+			output:      &buf,
+		}
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "xyzz xyz\nzzz zzz\nxyz xyz\nzzz"
+
+		assertEqual(t, got, want)
+	})
+
+	t.Run("class specifier target and regular translation, normal letters", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("coding HELLO abc Good 123"),
+			target:      "[:lower:]",
+			translation: "xyz",
+			output:      &buf,
+		}
+
+		cfg.translateCmd()
+
+		got := buf.String()
+		want := "xyzzzz HELLO zzx Gyyz 123"
+
+		assertEqual(t, got, want)
+	})
 	/*
+		t.Run("class specifier target and regular translation", func(t *testing.T) {
+			var buf bytes.Buffer
+			cfg := config{
+				input:       strings.NewReader("coding HELLO abc Goodbye 123"),
+				target:      "[:lower:]",
+				translation: "💚🥰🐹😊👀",
+				output:      &buf,
+			}
 
+			cfg.translateCmd()
 
-		CABing HELLO GAABbye 123
+			got := buf.String()
+			want := "💚🥰🐹😊👀👀 HELLO 👀👀💚 G🥰🥰🐹👀👀👀 123"
 
-						t.Run("class specifier target and regular translation", func(t *testing.T) {
-							var buf bytes.Buffer
-							cfg := config{
-								input:       strings.NewReader("Coding HELLO Goodbye 123"),
-								target:      "[:upper:]",
-								translation: "ab",
-								output:      &buf,
-							}
-
-							cfg.translateCmd()
-
-							got := buf.String()
-							want := "boding bbbbb goodbye 123"
-
-							if got != want {
-								t.Errorf("got '%s' want '%s'", got, want)
-							}
-						})
-
-				Cddddd HELLO ddddbdd 123
-				coding ddddd goodbye 123
-
-				abababcdf HELLO fffdbfe 123
-
-				😊💚😊💚😊💚💚💚💚 HELLO 💚💚💚💚💚💚💚 123
-
-				😊💚😊💚😊💚🥰🐹🐹 HELLO 🐹🐹🐹🐹💚🐹🐹 123
+			assertEqual(t, got, want)
+		})
 	*/
+}
+
+// coding👀HELLO👀abc👀Goodbye👀123🥰
+//
+// 🐹👀ding 👀👀👀👀👀 abc 👀oodbye🥰 123
+// coding 👀👀👀👀👀 abc 👀oodbye 123
+
+func assertEqual(t testing.TB, got, want string) {
+	t.Helper()
+	if got != want {
+		t.Errorf("got %q want %q", got, want)
+	}
 }
