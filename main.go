@@ -101,6 +101,11 @@ func loadConfig() (config, error) {
 		return cfg, fmt.Errorf("please provide cmd <target> <translation>: %v", args)
 	}
 
+	if cfg.deleteFlag {
+		cfg.translation = []rune("")
+		cfg.translationSlice = []rune("")
+	}
+
 	return cfg, nil
 }
 
@@ -146,7 +151,10 @@ func (cfg *config) processRunes(line string) string {
 
 		// check cache first
 		cachedRune, exists := cfg.subst[currentRune]
-		if exists && cachedRune != 0 {
+		if exists && (cachedRune != 0 || cfg.deleteFlag) {
+			if cfg.deleteFlag {
+				continue
+			}
 			res.WriteRune(cachedRune)
 		} else {
 			res.WriteRune(cfg.substitute(currentRune))

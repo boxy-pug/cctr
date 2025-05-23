@@ -146,6 +146,10 @@ func (cfg *config) funcToReg(r rune) rune {
 		if exists {
 			return val
 		} else {
+			// what to do here?
+			if len(cfg.translationSlice) == 0 {
+				return r
+			}
 			currentReplacementRune := cfg.translationSlice[0]
 			cfg.subst[r] = currentReplacementRune
 			if len(cfg.translationSlice) > 1 {
