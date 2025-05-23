@@ -209,11 +209,24 @@ func expandRange(s string) string {
 	var res []byte
 	idx := strings.Index(s, "-")
 
+	if idx == -1 || idx == 0 || idx == len(s)-1 {
+		// Return the original string if no valid range is found
+		return s
+	}
+
 	startTarget := s[idx-1]
 	endTarget := s[idx+1]
 
-	// startRest := s[:startTarget]
-	// endRest := s[endTarget:]
+	startRest := ""
+	endRest := ""
+
+	// Extract the parts before and after the range
+	if idx > 1 {
+		startRest = s[:idx-1]
+	}
+	if idx < len(s)-2 {
+		endRest = s[idx+2:]
+	}
 
 	// if startTarget is bigger than endTarget treat as normal subst
 	if startTarget > endTarget {
@@ -222,10 +235,15 @@ func expandRange(s string) string {
 
 	i := startTarget
 
+	res = append(res, []byte(startRest)...)
+
 	for i <= endTarget {
 		res = append(res, byte(i))
 		i++
 	}
+
+	res = append(res, []byte(endRest)...)
+
 	return string(res)
 }
 

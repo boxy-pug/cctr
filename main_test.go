@@ -75,24 +75,24 @@ func TestProcessLines(t *testing.T) {
 
 		assertEqual(t, got, want)
 	})
-	/*
-		t.Run("range expression, mixed", func(t *testing.T) {
-			var buf bytes.Buffer
-			cfg := config{
-				input:       strings.NewReader("abcdefghijklmnop"),
-				target:      "abc-f",
-				translation: "ghi-l",
-				output:      &buf,
-			}
 
-			cfg.translateCmd()
+	t.Run("range expression, mixed", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := config{
+			input:       strings.NewReader("abcdefghijklmnop"),
+			target:      "abc-f",
+			translation: "ghi-l",
+			output:      &buf,
+		}
 
-			got := buf.String()
-			want := "Cojing Chgllkngks\nhkllolgmily"
+		cfg.translateCmd()
 
-			assertEqual(t, got, want)
-		})
-	*/
+		got := buf.String()
+		want := "ghijklghijklmnop"
+
+		assertEqual(t, got, want)
+	})
+
 	t.Run("range expression ignored", func(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := config{
