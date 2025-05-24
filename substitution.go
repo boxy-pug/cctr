@@ -142,21 +142,18 @@ func (cfg *config) regToFunc(r rune) rune {
 
 func (cfg *config) funcToReg(r rune) rune {
 	if cfg.check(r) {
-		val, exists := cfg.subst[r]
-		if exists {
-			return val
-		} else {
-			// what to do here?
-			if len(cfg.translationSlice) == 0 {
-				return r
-			}
-			currentReplacementRune := cfg.translationSlice[0]
-			cfg.subst[r] = currentReplacementRune
-			if len(cfg.translationSlice) > 1 {
-				cfg.translationSlice = cfg.translationSlice[1:]
-			}
-			return currentReplacementRune
+		if cfg.deleteFlag {
+			return 0
 		}
+		if len(cfg.translationSlice) == 0 {
+			return 0
+		}
+		currentReplacementRune := cfg.translationSlice[0]
+		cfg.subst[r] = currentReplacementRune
+		if len(cfg.translationSlice) > 1 {
+			cfg.translationSlice = cfg.translationSlice[1:]
+		}
+		return currentReplacementRune
 	}
 	return r
 }

@@ -151,13 +151,16 @@ func (cfg *config) processRunes(line string) string {
 
 		// check cache first
 		cachedRune, exists := cfg.subst[currentRune]
-		if exists && (cachedRune != 0 || cfg.deleteFlag) {
+		if exists && cachedRune != 0 {
 			if cfg.deleteFlag {
 				continue
 			}
 			res.WriteRune(cachedRune)
 		} else {
-			res.WriteRune(cfg.substitute(currentRune))
+			processedRune := cfg.substitute(currentRune)
+			if processedRune != 0 {
+				res.WriteRune(processedRune)
+			}
 		}
 
 	}
